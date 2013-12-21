@@ -1,6 +1,7 @@
 -- TODO
--- future-loading (use coroutine.yield() and coroutine.resume())
+-- future-loading? (use coroutine.yield() and coroutine.resume())
 -- glob detection/weighting (more ore = faster)
+---- hints_ suggested doing a full scan, splining over the results, and finding maxima (analytical?!)
 -- sparse scanning (interlace + use collision data)
 -- particle FX?
 
@@ -21,12 +22,29 @@ function init()
   data.delayScan = false
   data.origPos = tech.position()
   generateSearchPattern()
+ 
+  a = { 1=1,2=2,3=3 }
+  b = { 1=2,2=2,3=1 }
+  --int_ab = { 2=2 }
+  int_ab = intersectTables(a,b)
+  world.logInfo("Intersecting tables a,b, result is %s",int_ab)
+end
+
+--[[ example intersection
+-----------------------]]--
+
+function intersectTables(a,b)
+    local c = {}
+    for ka,va in pairs(a) do
+        c[ka] = b[ka]
+    end
+    return c
 end
 
 function scan()
     local origpos = tech.position()
     origpos[2] = origpos[2]-1
-    -- should be run as: coroutine.create(scan)
+    -- if this ends up being future-loaded, run with coroutine.create(scan)
     if not nextOreSound then
         for i,ring in pairs(searchpattern) do
             for j,pos in pairs(ring) do

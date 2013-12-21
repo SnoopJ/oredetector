@@ -2,5 +2,5 @@
     "name" : "oredetector",
     "version" : "Beta v. Offended Koala",
     "path" : ".",
-    "dependencies" : [ "tabularasa1.1", "tabularasa1.0" ]
+    "dependencies" : [ "tabularasa1.1" ]
 }
