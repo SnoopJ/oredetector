@@ -6,7 +6,6 @@
 -- particle FX?
 
 local searchpattern = {}
-
 local candidates = {}
 local results = {}
 local startTime = {}
@@ -14,6 +13,12 @@ local lastScan = os.clock()
 local nextOreSound = nil
 local soundDelay = 1/20
 local pow = 1/4
+local scanning = false
+local cache = {}
+local cachettl = 30
+local flushtime = 0
+
+local pingTargets = { ["coal"]=true, ["dirt"]=false }
 
 function init()
   world.logInfo("Initialized detect.lua")
@@ -23,51 +28,77 @@ function init()
   data.origPos = tech.position()
   generateSearchPattern()
  
-  a = { 1=1,2=2,3=3 }
-  b = { 1=2,2=2,3=1 }
-  --int_ab = { 2=2 }
+  a = { 1,2,3 }
+  b = { 2,2,1 }
+  --int_ab should be ==  { [2]=2 }
   int_ab = intersectTables(a,b)
   world.logInfo("Intersecting tables a,b, result is %s",int_ab)
 end
 
---[[ example intersection
------------------------]]--
-
 function intersectTables(a,b)
     local c = {}
-    for ka,va in pairs(a) do
-        c[ka] = b[ka]
+    for k,v in pairs(a) do
+	-- if b[k] doesn't exist, c[k] is nil!
+	    if b[k] == v then
+    	    c[k] = v
+	    end
     end
     return c
 end
 
 function scan()
     local origpos = tech.position()
-    origpos[2] = origpos[2]-1
+    results = {}
+    flushtime = os.clock() + cachettl
     -- if this ends up being future-loaded, run with coroutine.create(scan)
-    if not nextOreSound then
-        for i,ring in pairs(searchpattern) do
-            for j,pos in pairs(ring) do
-                
-                local scanpos = {origpos[1]+pos[1],origpos[2]+pos[2]}
-                
-                local fmod = world.mod(scanpos,"foreground")
-                
-                --world.logInfo("At %s was %s",scanpos,fmod)
-                if fmod then
-                    --world.logInfo("Found mod %s at relative pos (%d,%d)",fmod,pos[1],pos[2])
-                end
-                -- bozo detection (any ol' piece of ore)
-                if fmod == "iron" then
-                    --tech.playImmediateSound("/sfx/beep2.wav")
-                    nextOreSound = os.clock()+
-                    soundDelay*i
-                    world.logInfo("In detect.lua:scan() Iron found, should play a sound shortly (%d seconds)",nextOreSound-os.clock())
-                    return nil
-                end
-            end
-        end
+    if nextOreSound then return nil end
+    for i,ring in pairs(searchpattern) do
+        --table.insert(results,scanRing(ring,origpos))
+        scanRing(ring,origpos)
     end
+
+    local num = 0
+    for k,v in pairs(results) do
+        num = num + 1
+    end
+    world.logInfo("Found %d results",num)
+    --world.logInfo("cache is %s",cache)
+end
+
+function scanRing(ring,origpos)
+	local res = {}
+	for j,pos in pairs(ring) do
+		local dist = pos[1]*pos[1]+pos[2]*pos[2]
+		local scanpos = {round(origpos[1]+pos[1]),round(origpos[2]+pos[2])}
+		local usecache = (dist > 9)
+		res[scanpos] = scanTile(scanpos,dist,usecache)
+    end
+	return res
+end
+
+function scanTile(scanpos,dist,usecache)
+	local res = nil 
+	local ctile = nil
+
+	-- this will initialize the child table as necessary
+	if not cache[scanpos[1]] then cache[scanpos[1]] = {} end
+	xcache = cache[scanpos[1]]
+	ctile = xcache[scanpos[2]]
+	
+	if ctile and usecache then
+		--world.logInfo("Using cached result...")
+		res = ctile[1]
+	else
+		local fmod = world.mod(scanpos,"foreground") or "empty"
+		cache[scanpos[1]][scanpos[2]] = { fmod, flushtime }
+		res = fmod
+    end
+	if pingTargets[res] then 
+        nextOreSound=os.clock()+math.min(0.05*dist,1.5) 
+        results[scanpos] = res 
+        world.logInfo("%s",results)
+    end
+	return res
 end
 
 function generateSearchPattern()
@@ -75,7 +106,7 @@ function generateSearchPattern()
         { {1,0}, {0,1}, {-1,0}, {0,-1} } 
     }
     for i=2,data.detectRange do
-        table.insert(searchpattern,drawOctagon(i))
+        table.insert(searchpattern,createOctagon(i))
     end
     world.logInfo("Full searchpattern is %s",searchpattern)
     for k,v in pairs(searchpattern[1]) do
@@ -88,7 +119,7 @@ function round(num)
     return math.floor(num + 0.5)
 end
 
-function drawOctagon(i)
+function createOctagon(i)
 -- do stuff.  see the xcf file
     local perimeter = 4*math.ceil(i/2) + (3-i%2)*4*math.floor(i/2)
     local ret = {}
@@ -110,14 +141,9 @@ function input(args)
     return "detect"
   end
   if args.moves["special"] == 2 then
-    world.logInfo("returning 'mousepos' in detect.lua:input()")
-    soundDelay = soundDelay+1/100
-    world.logInfo("Delay is now %d",soundDelay)
+    world.logInfo("Flushing cache")
+    cache = {}
     --return "mousepos"
-  end
-  if args.moves["special"] == 3 then
-    soundDelay = soundDelay-1/100
-    world.logInfo("Delay is now %d",soundDelay)
   end
   
   return nil
@@ -130,24 +156,24 @@ function update(args)
   end
   
   if nextOreSound and os.clock() > nextOreSound then
-    world.logInfo("Playing that sound...")
+    --world.logInfo("Playing that sound...")
     nextOreSound = nil
     tech.playImmediateSound("/sfx/beep2.wav")
   end
   
-  if (os.clock()-lastScan) > 0.1 then
+  if (os.clock()-lastScan) > 0.1 and scanning then
     lastScan=os.clock()
     scan()
   end
   
   if args.actions["detect"] then
-    world.logInfo("detect passed as an arg in detect.lua:update()")
-    scan()
+    scanning = not scanning
+    nextOreSound = nil
+    world.logInfo("detect passed as an arg in detect.lua:update(), setting scanning to %s",scanning)
     return nil
   end
 end
 
---function doDetect(candidates,resume,
 
 function getCandidates()
     local c = {}
