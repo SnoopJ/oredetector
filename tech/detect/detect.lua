@@ -11,18 +11,19 @@ local results = {}
 local startTime = {}
 local lastScan = os.clock()
 local nextOreSound = nil
-local soundDelay = 1/20
+local soundDelay = 0.2
 local pow = 1/4
 local scanning = false
 local cache = {}
 local cachettl = 30
 local flushtime = 0
 local neighbor3x3 = { {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-1} }
-local pingTargets = { ["coal"]=true, ["dirt"]=false, ["cobblestone"]=true }
+local pingTargets = { ["coal"]=true, ["silver"]=true, ["dirt"]=false, ["cobblestone"]=false }
 local scanorigin = {}
+local maxSoundDelay = 2
 
 -- set this flag to true to test mats, not mods (debugging)
-local debugTestMat = true
+local debugTestMat = false
 
 function init()
   world.logInfo("Initialized detect.lua")
@@ -74,10 +75,10 @@ function scan()
         end
     end
     --world.logInfo("Max score is %s",maxscore)
-    if not maxscore[1] then return nil end
+    if not maxscore[1][1] then return nil end
     dist = math.sqrt(math.pow(maxscore[1][1]-origpos[1],2)+math.pow(maxscore[1][2]-origpos[2],2))
-    nextOreSound = os.clock() + 20/1000 * dist
-    world.spawnProjectile("oreflare",maxscore[1],tech.parentEntityId(),{0,0},false)
+    nextOreSound = os.clock() + math.min(soundDelay * 1/maxscore[2],maxSoundDelay)
+    world.spawnProjectile("oreflash2",maxscore[1],tech.parentEntityId(),{0,0},false)
 end
 
 function scoreTile(pos,target)
@@ -168,11 +169,15 @@ function input(args)
     return "detect"
   end
   if args.moves["special"] == 2 then
-    world.logInfo("Flushing cache")
-    cache = {}
+    --world.logInfo("Flushing cache")
+    --cache = {}
     --return "mousepos"
+    soundDelay = soundDelay - 0.1
+    world.logInfo("soundDelay is %d",soundDelay)
   end
   if args.moves["special"] == 3 then
+    soundDelay = soundDelay + 0.1
+    world.logInfo("soundDelay is %d",soundDelay)
     return "mousepos"
   end
   
@@ -182,7 +187,7 @@ end
 function update(args)
   if args.actions["mousepos"] then
     local mpos = args.aimPosition 
-    world.spawnProjectile("oreflare", mpos, tech.parentEntityId(), {0,0}, false)
+    world.spawnProjectile("oreflash2", mpos, tech.parentEntityId(), {0,0}, false)
     world.logInfo("Mouse position is (%d,%d)",mpos[1],mpos[2])
   end
   
