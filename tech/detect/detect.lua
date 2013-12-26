@@ -17,8 +17,12 @@ local scanning = false
 local cache = {}
 local cachettl = 30
 local flushtime = 0
+local neighbor3x3 = { {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-1} }
+local pingTargets = { ["coal"]=true, ["dirt"]=false, ["cobblestone"]=true }
+local scanorigin = {}
 
-local pingTargets = { ["coal"]=true, ["dirt"]=false }
+-- set this flag to true to test mats, not mods (debugging)
+local debugTestMat = true
 
 function init()
   world.logInfo("Initialized detect.lua")
@@ -48,6 +52,8 @@ end
 
 function scan()
     local origpos = tech.position()
+    scanorigin = origpos
+    local maxscore = { {}, 0 } 
     results = {}
     flushtime = os.clock() + cachettl
     -- if this ends up being future-loaded, run with coroutine.create(scan)
@@ -58,11 +64,32 @@ function scan()
     end
 
     local num = 0
-    for k,v in pairs(results) do
-        num = num + 1
+    local scoring = {}
+    for px,t in pairs(results) do
+        for py,mod in pairs (t) do 
+            num = num + 1
+            if not scoring[px] then scoring[px]={} end
+            scoring[px][py] = scoreTile({px,py},mod)
+            if scoring[px][py] > maxscore[2] then maxscore = { {px,py}, scoring[px][py] } end
+        end
     end
-    world.logInfo("Found %d results",num)
-    --world.logInfo("cache is %s",cache)
+    --world.logInfo("Max score is %s",maxscore)
+    if not maxscore[1] then return nil end
+    dist = math.sqrt(math.pow(maxscore[1][1]-origpos[1],2)+math.pow(maxscore[1][2]-origpos[2],2))
+    nextOreSound = os.clock() + 20/1000 * dist
+    world.spawnProjectile("oreflare",maxscore[1],tech.parentEntityId(),{0,0},false)
+end
+
+function scoreTile(pos,target)
+    local score = 1
+    for i=1,8 do
+        local neighbor = {round(pos[1]+neighbor3x3[i][1]),round(pos[2]+neighbor3x3[i][2])}
+        if results[neighbor[1]] and results[neighbor[1]][neighbor[2]] then 
+            --world.logInfo("Incrementing score...")
+            score=score+1 
+        end
+    end 
+    return score*1/(math.sqrt(math.pow(pos[1]-scanorigin[1],2)+math.pow(pos[2]-scanorigin[2],2))+1)
 end
 
 function scanRing(ring,origpos)
@@ -70,7 +97,7 @@ function scanRing(ring,origpos)
 	for j,pos in pairs(ring) do
 		local dist = pos[1]*pos[1]+pos[2]*pos[2]
 		local scanpos = {round(origpos[1]+pos[1]),round(origpos[2]+pos[2])}
-		local usecache = (dist > 9)
+		local usecache = (dist > 25)
 		res[scanpos] = scanTile(scanpos,dist,usecache)
     end
 	return res
@@ -89,14 +116,14 @@ function scanTile(scanpos,dist,usecache)
 		--world.logInfo("Using cached result...")
 		res = ctile[1]
 	else
-		local fmod = world.mod(scanpos,"foreground") or "empty"
-		cache[scanpos[1]][scanpos[2]] = { fmod, flushtime }
-		res = fmod
+		res = world.mod(scanpos,"foreground") or "empty"
+        if debugTestMat then res = world.material(scanpos,"foreground") or "empty" end 
+		cache[scanpos[1]][scanpos[2]] = { res, flushtime }
     end
 	if pingTargets[res] then 
-        nextOreSound=os.clock()+math.min(0.05*dist,1.5) 
-        results[scanpos] = res 
-        world.logInfo("%s",results)
+        if not results[scanpos[1]] then results[scanpos[1]] = {} end
+        results[scanpos[1]][scanpos[2]] = res 
+        --world.logInfo("%s",results)
     end
 	return res
 end
@@ -108,9 +135,9 @@ function generateSearchPattern()
     for i=2,data.detectRange do
         table.insert(searchpattern,createOctagon(i))
     end
-    world.logInfo("Full searchpattern is %s",searchpattern)
+    --world.logInfo("Full searchpattern is %s",searchpattern)
     for k,v in pairs(searchpattern[1]) do
-        world.logInfo("Key %s has val %s",k,v)
+        --world.logInfo("Key %s has val %s",k,v)
     end
 end
 
@@ -123,7 +150,7 @@ function createOctagon(i)
 -- do stuff.  see the xcf file
     local perimeter = 4*math.ceil(i/2) + (3-i%2)*4*math.floor(i/2)
     local ret = {}
-    world.logInfo("'Perimeter' of octagon %d is %d",i,perimeter)  
+    --world.logInfo("'Perimeter' of octagon %d is %d",i,perimeter)  
     
     for j=0,perimeter-1 do
     table.insert(ret,
@@ -145,13 +172,17 @@ function input(args)
     cache = {}
     --return "mousepos"
   end
+  if args.moves["special"] == 3 then
+    return "mousepos"
+  end
   
   return nil
 end
 
 function update(args)
   if args.actions["mousepos"] then
-    local mpos = args.aimPosition
+    local mpos = args.aimPosition 
+    world.spawnProjectile("oreflare", mpos, tech.parentEntityId(), {0,0}, false)
     world.logInfo("Mouse position is (%d,%d)",mpos[1],mpos[2])
   end
   
