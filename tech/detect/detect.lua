@@ -5,6 +5,7 @@
 -- sparse scanning (interlace + use collision data)
 -- particle FX?
 
+local dmin = 10/45
 local searchpattern = {}
 local candidates = {}
 local results = {}
@@ -12,7 +13,7 @@ local startTime = {}
 local lastScan = os.clock()
 local nextOreSound = nil
 local soundDelay = 0.2
-local pow = 1/4
+local scoringPower = 0.7 
 local scanning = false
 local cache = {}
 local cachettl = 30
@@ -21,6 +22,12 @@ local neighbor3x3 = { {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-
 local pingTargets = { ["coal"]=true, ["silver"]=true, ["dirt"]=false, ["cobblestone"]=false }
 local scanorigin = {}
 local maxSoundDelay = 2
+local minScanDelay = 0.1
+local scanDelay = 0
+local minScore = 3
+local soundstr = "/sfx/beep.ogg"
+local farDist = 30
+local mediumDist = 15
 
 -- set this flag to true to test mats, not mods (debugging)
 local debugTestMat = false
@@ -70,18 +77,32 @@ function scan()
         for py,mod in pairs (t) do 
             num = num + 1
             if not scoring[px] then scoring[px]={} end
-            scoring[px][py] = scoreTile({px,py},mod)
+            dist = math.sqrt(math.pow(px-origpos[1],2)+math.pow(py-origpos[2],2))
+            if dist < 1 then dist = 1 end
+            scoring[px][py] = scoreTile({px,py},mod,dist)
+            world.logInfo("Now scoring %s, dist is %d, score is %d",{px,py},dist,scoring[px][py])
             if scoring[px][py] > maxscore[2] then maxscore = { {px,py}, scoring[px][py] } end
         end
     end
     --world.logInfo("Max score is %s",maxscore)
-    if not maxscore[1][1] then return nil end
+    if not maxscore[1][1] then 
+        scanDelay = 1.0 -- switch to 'passive' scan
+        return nil 
+    end
+    scanDelay = 0.0 -- switch to 'active' scan
     dist = math.sqrt(math.pow(maxscore[1][1]-origpos[1],2)+math.pow(maxscore[1][2]-origpos[2],2))
+    if dist >= farDist then
+        soundstr = "/sfx/oredetector/coal/far.wav"
+    elseif dist < farDist and dist >= mediumDist then
+        soundstr = "/sfx/oredetector/coal/medium.wav"
+    elseif dist < mediumDist then
+        soundstr = "/sfx/oredetector/coal/close.wav"
+    end 
     nextOreSound = os.clock() + math.min(soundDelay * 1/maxscore[2],maxSoundDelay)
     world.spawnProjectile("oreflash2",maxscore[1],tech.parentEntityId(),{0,0},false)
 end
 
-function scoreTile(pos,target)
+function scoreTile(pos,target,dist)
     local score = 1
     for i=1,8 do
         local neighbor = {round(pos[1]+neighbor3x3[i][1]),round(pos[2]+neighbor3x3[i][2])}
@@ -90,7 +111,8 @@ function scoreTile(pos,target)
             score=score+1 
         end
     end 
-    return score*1/(math.sqrt(math.pow(pos[1]-scanorigin[1],2)+math.pow(pos[2]-scanorigin[2],2))+1)
+    if score < minScore then return 0 end
+    return score/math.pow(dist+1,scoringPower)
 end
 
 function scanRing(ring,origpos)
@@ -172,12 +194,12 @@ function input(args)
     --world.logInfo("Flushing cache")
     --cache = {}
     --return "mousepos"
-    soundDelay = soundDelay - 0.1
-    world.logInfo("soundDelay is %d",soundDelay)
+    nearpow = nearpow - 0.1
+    world.logInfo("nearpow is %d",nearpow)
   end
   if args.moves["special"] == 3 then
-    soundDelay = soundDelay + 0.1
-    world.logInfo("soundDelay is %d",soundDelay)
+    nearpow = nearpow + 0.1
+    world.logInfo("nearpow is %d",nearpow)
     return "mousepos"
   end
   
@@ -194,10 +216,10 @@ function update(args)
   if nextOreSound and os.clock() > nextOreSound then
     --world.logInfo("Playing that sound...")
     nextOreSound = nil
-    tech.playImmediateSound("/sfx/beep2.wav")
+    tech.playImmediateSound(soundstr)
   end
   
-  if (os.clock()-lastScan) > 0.1 and scanning then
+  if (os.clock()-lastScan) > (minScanDelay + scanDelay) and scanning then
     lastScan=os.clock()
     scan()
   end

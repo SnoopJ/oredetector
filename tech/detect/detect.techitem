@@ -1,7 +1,7 @@
 {
   "itemName" : "detectTech",
   "rarity" : "Legendary",
-  "inventoryIcon" : "/tech/banana.png",
+  "inventoryIcon" : "/tech/detect/detect.png",
   "description" : "Unlocked the Detector Tech!",
   "shortdescription" : "Ore Detector",
   "inspectionKind" : "tech",
