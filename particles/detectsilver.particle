@@ -1,12 +1,12 @@
 {
-  "kind" : "jumpboostmessage",
+  "kind" : "detectsilver",
   "definition" : {
     "type" : "text",
     "size" : 0.85,
-    "text" : "^shadow;Jump Boost",
-    "color" : [40, 218, 244, 255],
+    "text" : "^shadow;Silver",
+    "color" : [220, 220, 220, 255],
     "light" : [0, 0, 0],
-    "initialVelocity" : [0.0, -10.0],
+    "initialVelocity" : [0.0, -5.0],
     "finalVelocity" : [0.0, 0.0],
     "approach" : [5, 70],
     "position" : [0, -3],

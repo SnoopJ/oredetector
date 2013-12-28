@@ -1,26 +1,20 @@
 -- TODO
 -- future-loading? (use coroutine.yield() and coroutine.resume())
--- glob detection/weighting (more ore = faster)
 ---- hints_ suggested doing a full scan, splining over the results, and finding maxima (analytical?!)
 -- sparse scanning (interlace + use collision data)
 -- particle FX?
 
-local dmin = 10/45
 local searchpattern = {}
-local candidates = {}
 local results = {}
-local startTime = {}
 local lastScan = os.clock()
 local nextOreSound = nil
-local soundDelay = 0.2
+local soundDelay = 150/1000
 local scoringPower = 0.7 
 local scanning = false
 local cache = {}
 local cachettl = 30
-local flushtime = 0
 local neighbor3x3 = { {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-1} }
-local pingTargets = { ["coal"]=true, ["silver"]=true, ["dirt"]=false, ["cobblestone"]=false }
-local scanorigin = {}
+local pingTargets = { ["coal"]=true, ["dirt"]=false, ["cobblestone"]=false }
 local maxSoundDelay = 2
 local minScanDelay = 0.1
 local scanDelay = 0
@@ -28,42 +22,42 @@ local minScore = 3
 local soundstr = "/sfx/beep.ogg"
 local farDist = 30
 local mediumDist = 15
+local flushtime = 0
+local scantime = 0
+local flushedsomething = false
+local targets = {"coal","copperore","silverore"}
+local i = 1
 
 -- set this flag to true to test mats, not mods (debugging)
-local debugTestMat = false
+local debug = false
 
-function init()
-  world.logInfo("Initialized detect.lua")
-  data.detectRange = 45
-  --data.detectRange = 20
-  data.delayScan = false
-  data.origPos = tech.position()
-  generateSearchPattern()
- 
-  a = { 1,2,3 }
-  b = { 2,2,1 }
-  --int_ab should be ==  { [2]=2 }
-  int_ab = intersectTables(a,b)
-  world.logInfo("Intersecting tables a,b, result is %s",int_ab)
+local debugVerbosity = 0 
+-- verbosity levels (cumulative)
+--  0 : off (no debug output)
+--  1 : single-line summary, functional tracing only
+--  2 : single-line detail, functional output etc.
+--  3 : print everything (basically guaranteed to lag/freeze the game)
+
+function debugLog(minlevel,str,...)
+   if debugVerbosity >= minlevel then
+        world.logInfo(str,...)
+   end 
 end
 
-function intersectTables(a,b)
-    local c = {}
-    for k,v in pairs(a) do
-	-- if b[k] doesn't exist, c[k] is nil!
-	    if b[k] == v then
-    	    c[k] = v
-	    end
-    end
-    return c
+function init()
+  debugLog(1,"detect.lua:init(): Initialized detect.lua")
+  data.detectRange = 45
+  data.origPos = tech.position()
+  generateSearchPattern()
 end
 
 function scan()
     local origpos = tech.position()
-    scanorigin = origpos
     local maxscore = { {}, 0 } 
     results = {}
     flushtime = os.clock() + cachettl
+    scantime = os.clock()
+    debugLog(1,"detect.lua:scan(): Running scan()...")
     -- if this ends up being future-loaded, run with coroutine.create(scan)
     if nextOreSound then return nil end
     for i,ring in pairs(searchpattern) do
@@ -80,11 +74,11 @@ function scan()
             dist = math.sqrt(math.pow(px-origpos[1],2)+math.pow(py-origpos[2],2))
             if dist < 1 then dist = 1 end
             scoring[px][py] = scoreTile({px,py},mod,dist)
-            world.logInfo("Now scoring %s, dist is %d, score is %d",{px,py},dist,scoring[px][py])
+            debugLog(2,"detect.lua:scan(): Now scoring %s, dist is %d, score is %d",{px,py},dist,scoring[px][py])
             if scoring[px][py] > maxscore[2] then maxscore = { {px,py}, scoring[px][py] } end
         end
     end
-    --world.logInfo("Max score is %s",maxscore)
+    debugLog(2,"detect.lua:scan(): Max score is %s",maxscore)
     if not maxscore[1][1] then 
         scanDelay = 1.0 -- switch to 'passive' scan
         return nil 
@@ -100,6 +94,7 @@ function scan()
     end 
     nextOreSound = os.clock() + math.min(soundDelay * 1/maxscore[2],maxSoundDelay)
     world.spawnProjectile("oreflash2",maxscore[1],tech.parentEntityId(),{0,0},false)
+    if flushedsomething then debugLog(2,"detect.lua:scan(): flushed something this scan") end
 end
 
 function scoreTile(pos,target,dist)
@@ -107,7 +102,7 @@ function scoreTile(pos,target,dist)
     for i=1,8 do
         local neighbor = {round(pos[1]+neighbor3x3[i][1]),round(pos[2]+neighbor3x3[i][2])}
         if results[neighbor[1]] and results[neighbor[1]][neighbor[2]] then 
-            --world.logInfo("Incrementing score...")
+            debugLog(2,"detect.lua:scoreTile() Incrementing score at %s...",neighbor)
             score=score+1 
         end
     end 
@@ -135,18 +130,20 @@ function scanTile(scanpos,dist,usecache)
 	xcache = cache[scanpos[1]]
 	ctile = xcache[scanpos[2]]
 	
-	if ctile and usecache then
-		--world.logInfo("Using cached result...")
+    debugLog(3,"detect.lua:scanTile(): Cached tile is %s",ctile)
+    if ctile and ctile[2] and scantime>=ctile[2] then flushedsomething = true end
+	if ctile and usecache and scantime < ctile[2] then
+		debugLog(2,"detect.lua:scanTile(): Using cached result for %s...",scanpos)
 		res = ctile[1]
 	else
 		res = world.mod(scanpos,"foreground") or "empty"
-        if debugTestMat then res = world.material(scanpos,"foreground") or "empty" end 
+        if debug then res = world.material(scanpos,"foreground") or "empty" end 
 		cache[scanpos[1]][scanpos[2]] = { res, flushtime }
     end
 	if pingTargets[res] then 
         if not results[scanpos[1]] then results[scanpos[1]] = {} end
         results[scanpos[1]][scanpos[2]] = res 
-        --world.logInfo("%s",results)
+        debugLog(3,"detect.lua:scanTile(): Result at %s is %s",scanpos,res)
     end
 	return res
 end
@@ -158,10 +155,7 @@ function generateSearchPattern()
     for i=2,data.detectRange do
         table.insert(searchpattern,createOctagon(i))
     end
-    --world.logInfo("Full searchpattern is %s",searchpattern)
-    for k,v in pairs(searchpattern[1]) do
-        --world.logInfo("Key %s has val %s",k,v)
-    end
+    debugLog(2,"detect.lua:generateSearchPattern(): Full searchpattern is %s",searchpattern)
 end
 
 function round(num)
@@ -173,7 +167,7 @@ function createOctagon(i)
 -- do stuff.  see the xcf file
     local perimeter = 4*math.ceil(i/2) + (3-i%2)*4*math.floor(i/2)
     local ret = {}
-    --world.logInfo("'Perimeter' of octagon %d is %d",i,perimeter)  
+    --debugLog(3,"'Perimeter' of octagon %d is %d",i,perimeter)  
     
     for j=0,perimeter-1 do
     table.insert(ret,
@@ -187,19 +181,18 @@ end
 
 function input(args)
   if args.moves["special"] == 1 then
-    world.logInfo("returning 'detect' in detect.lua:input()")
     return "detect"
   end
   if args.moves["special"] == 2 then
-    --world.logInfo("Flushing cache")
+    --debugLog(1,"detect.lua:input(): Manually flushing cache")
     --cache = {}
-    --return "mousepos"
-    nearpow = nearpow - 0.1
-    world.logInfo("nearpow is %d",nearpow)
+    world.spawnProjectile("detectcoal",tech.position(),tech.parentEntityId(),{0,0},false)
   end
   if args.moves["special"] == 3 then
-    nearpow = nearpow + 0.1
-    world.logInfo("nearpow is %d",nearpow)
+--    tech.burstParticleEmitter("detectParticles")
+    i = i + 1
+    if i > 3 then i = 1 end
+    tech.burstParticleEmitter("detect"..targets[i])
     return "mousepos"
   end
   
@@ -214,7 +207,6 @@ function update(args)
   end
   
   if nextOreSound and os.clock() > nextOreSound then
-    --world.logInfo("Playing that sound...")
     nextOreSound = nil
     tech.playImmediateSound(soundstr)
   end
@@ -227,28 +219,7 @@ function update(args)
   if args.actions["detect"] then
     scanning = not scanning
     nextOreSound = nil
-    world.logInfo("detect passed as an arg in detect.lua:update(), setting scanning to %s",scanning)
+    debugLog(1,"detect passed as an arg in detect.lua:update(), setting scanning to %s",scanning)
     return nil
   end
-end
-
-
-function getCandidates()
-    local c = {}
-    local collisions = {}
-    local origpos = tech.position()
-    local n = 0
-    local scanstartTime = os.clock()
-    
-    for i=-data.detectRange,data.detectRange do
-        collisions = world.collisionBlocksAlongLine({origpos[1]+i,origpos[2]+data.detectRange},{origpos[1]+i,origpos[2]-data.detectRange})
-        --[[for k,v in pairs(collisions) do
-            c[v] = 1
-            n = n + 1
-            --world.logInfo("In detect.lua:getCandidates() Logging key %s val %s",k,v)
-        end ]]--
-    end
-    world.logInfo("Found %d collisions in detect.lua:getCandidates(), total scan took %d ms",n,(os.clock()-scanstartTime)*1000)
-    c = collisions
-    return c
 end

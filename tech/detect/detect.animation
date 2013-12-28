@@ -1,30 +1,22 @@
 {
-  "animatedParts" : {
-    "stateTypes" : {
-      "dashing" : {
-        "default" : "off",
-        "states" : {
-          "off" : {
-          },
-          "on" : {
-            "properties" : {
-              "immediateSound" : "/sfx/tech/tech_dashshort.wav"
-            }
-          }
-        }
-      }
-    }
-  },
-
   "particleEmitters" : {
-    "dashParticles" : {
-      "emissionRate" : 40.0,
-      "particles" : [
-        {
-          "particle" : "dash",
-          "flip" : true
-        }
-      ]
+    "detectcoal" : {
+        "emissionRate" : 1.0, 
+        "particles" : [ { 
+            "particle" : "detectcoal", 
+            "flip" : true } ] 
+    },
+    "detectcopperore" : {
+        "emissionRate" : 1.0, 
+        "particles" : [ { 
+            "particle" : "detectcopper", 
+            "flip" : true } ] 
+    },
+    "detectsilverore" : {
+        "emissionRate" : 1.0, 
+        "particles" : [ { 
+            "particle" : "detectsilver", 
+            "flip" : true } ] 
     }
   }
 }

@@ -1,26 +1,14 @@
 {
-  "projectileName" : "oreflash",
-  "frames" : "oreflash.png",
-  "physics" : "flame",
-  "level" : 3,
-  "animationCycle" : 1,
-  "damageKindImage" : "icon.png",
-  "frameNumber" : 12,
-  "power" : 50,
-  "speed" : 25,
-  "timeToLive" : 1,
-  "bounces" : 4,
-  "piercing" : false,
-//"damagePoly" : [ [-9, 0], [-6, -6], [0, -9], [6, -6], [9, 0], [6, 6], [0, 9], [-6, 6] ],
-  "lightColor" : [255, 255, 255],
-  "damageKind" : "fire",
-  "layer" : "front",
-  "statusEffects" : [
-    {
-      "kind" : "glow",
-      "amount" : 1.0,
-      "color" : "white",
-      "duration" : 50.0
-    }
-  ]
+  "projectileName" : "detectcoal",
+  "frames" : "invisibleprojectile.png",
+  "level" : 0,
+  "frameNumber" : 1,
+  "speed" : 0,
+  "fallSpeed" : 0,
+  "damagePoly" : [ [-36, 0], [-24, -24], [0, -36], [24, -24], [36, 0], [24, 24], [0, 36], [-24, 24] ],
+  "animationLoops" : false,
+  "flippable" : true,
+  "universalDamage" : true,
+  "damageKind" : "default",
+  "emitters" : ["detectcoal"]
 }

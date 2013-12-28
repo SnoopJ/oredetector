@@ -1,4 +1,5 @@
 {
   "script" : "detect.lua",
-  "actions" : ["detect"]
+  "actions" : ["detect"],
+  "animator" : "detect.animation"
 }
