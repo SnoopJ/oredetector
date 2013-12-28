@@ -3,34 +3,52 @@
 ---- hints_ suggested doing a full scan, splining over the results, and finding maxima (analytical?!)
 -- sparse scanning (interlace + use collision data)
 -- particle FX?
+--
 
 local searchpattern = {}
+--local neighbor3x3 = { {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-1} }
+-- 2-neighbors
+local neighbor3x3 = { 
+    [4]={-1,1},  [3]={0,1},  [2]={1,1},
+
+    [5]={-1,0},              [1]={1,0},
+
+    [6]={-1,-1}, [7]={0,-1}, [8]={1,-1} 
+}
+
+-- 4-neighbors
+local neighbor5x5 = { 
+    {1,0},{1,1},{0,1},{-1,1},{-1,0},{-1,-1},{0,-1},{1,-1},
+    {2,0},{2,1},{2,2},{1,2},{0,2},{-1,2},{-2,2},{-2,1},{-2,0},{-2,-1},{-2,-2},{-1,-2},{0,-2},{1,-2},{2,-2},{2,-1}
+ }
+
 local results = {}
+local cache = {}
+local cachettl = 30
+
 local lastScan = os.clock()
 local nextOreSound = nil
 local soundDelay = 150/1000
-local scoringPower = 0.7 
-local scanning = false
-local cache = {}
-local cachettl = 30
-local neighbor3x3 = { {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-1} }
-local pingTargets = { ["coal"]=true, ["dirt"]=false, ["cobblestone"]=false }
 local maxSoundDelay = 2
 local minScanDelay = 0.1
 local scanDelay = 0
+local flushtime = 0
+local scantime = 0
+
+local scoringPower = 0.7 
 local minScore = 3
+
+local scanning = false
+local pingTargets = { ["coal"]=true, ["dirt"]=false, ["cobblestone"]=false }
 local soundstr = "/sfx/beep.ogg"
 local farDist = 30
 local mediumDist = 15
-local flushtime = 0
-local scantime = 0
 local flushedsomething = false
 local targets = {"coal","copperore","silverore"}
-local i = 1
+local currenttarget = 1
 
 -- set this flag to true to test mats, not mods (debugging)
-local debug = false
-
+local debugMaterial = false
 local debugVerbosity = 0 
 -- verbosity levels (cumulative)
 --  0 : off (no debug output)
@@ -47,7 +65,6 @@ end
 function init()
   debugLog(1,"detect.lua:init(): Initialized detect.lua")
   data.detectRange = 45
-  data.origPos = tech.position()
   generateSearchPattern()
 end
 
@@ -55,8 +72,8 @@ function scan()
     local origpos = tech.position()
     local maxscore = { {}, 0 } 
     results = {}
-    flushtime = os.clock() + cachettl
     scantime = os.clock()
+    flushtime = scantime + cachettl
     debugLog(1,"detect.lua:scan(): Running scan()...")
     -- if this ends up being future-loaded, run with coroutine.create(scan)
     if nextOreSound then return nil end
@@ -65,11 +82,9 @@ function scan()
         scanRing(ring,origpos)
     end
 
-    local num = 0
     local scoring = {}
     for px,t in pairs(results) do
         for py,mod in pairs (t) do 
-            num = num + 1
             if not scoring[px] then scoring[px]={} end
             dist = math.sqrt(math.pow(px-origpos[1],2)+math.pow(py-origpos[2],2))
             if dist < 1 then dist = 1 end
@@ -84,7 +99,9 @@ function scan()
         return nil 
     end
     scanDelay = 0.0 -- switch to 'active' scan
-    dist = math.sqrt(math.pow(maxscore[1][1]-origpos[1],2)+math.pow(maxscore[1][2]-origpos[2],2))
+    olddist = math.sqrt(math.pow(maxscore[1][1]-origpos[1],2)+math.pow(maxscore[1][2]-origpos[2],2))
+    dist = world.magnitude(maxscore[1],origpos)
+    debugLog(-1,"detect.lua:scan(): Difference in distance calcs is olddist-dist=%d",olddist-dist)
     if dist >= farDist then
         soundstr = "/sfx/oredetector/coal/far.wav"
     elseif dist < farDist and dist >= mediumDist then
@@ -93,7 +110,7 @@ function scan()
         soundstr = "/sfx/oredetector/coal/close.wav"
     end 
     nextOreSound = os.clock() + math.min(soundDelay * 1/maxscore[2],maxSoundDelay)
-    world.spawnProjectile("oreflash2",maxscore[1],tech.parentEntityId(),{0,0},false)
+    --world.spawnProjectile("oreflash2",maxscore[1],tech.parentEntityId(),{0,0},false)
     if flushedsomething then debugLog(2,"detect.lua:scan(): flushed something this scan") end
 end
 
@@ -137,7 +154,7 @@ function scanTile(scanpos,dist,usecache)
 		res = ctile[1]
 	else
 		res = world.mod(scanpos,"foreground") or "empty"
-        if debug then res = world.material(scanpos,"foreground") or "empty" end 
+        if debugMaterial then res = world.material(scanpos,"foreground") or "empty" end 
 		cache[scanpos[1]][scanpos[2]] = { res, flushtime }
     end
 	if pingTargets[res] then 
@@ -186,7 +203,7 @@ function input(args)
   if args.moves["special"] == 2 then
     --debugLog(1,"detect.lua:input(): Manually flushing cache")
     --cache = {}
-    world.spawnProjectile("detectcoal",tech.position(),tech.parentEntityId(),{0,0},false)
+    debugLog(-1,"detect.lua:input(): Hand item is %s",world.entityHandItem(tech.parentEntityId(),"primary"))
   end
   if args.moves["special"] == 3 then
 --    tech.burstParticleEmitter("detectParticles")
@@ -202,16 +219,18 @@ end
 function update(args)
   if args.actions["mousepos"] then
     local mpos = args.aimPosition 
-    world.spawnProjectile("oreflash2", mpos, tech.parentEntityId(), {0,0}, false)
     world.logInfo("Mouse position is (%d,%d)",mpos[1],mpos[2])
   end
   
-  if nextOreSound and os.clock() > nextOreSound then
+  if nextOreSound 
+  and os.clock() > nextOreSound then
     nextOreSound = nil
     tech.playImmediateSound(soundstr)
   end
   
-  if (os.clock()-lastScan) > (minScanDelay + scanDelay) and scanning then
+  if scanning 
+  and (os.clock()-lastScan) > (minScanDelay + scanDelay)
+  and string.find(tostring(world.entityHandItem(tech.parentEntityId(),"primary")),"pickaxe") then
     lastScan=os.clock()
     scan()
   end

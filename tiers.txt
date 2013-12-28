@@ -1,0 +1,9 @@
+stonepickaxe
+
+copperpickaxe
+
+silverpickaxe
+
+goldpickaxe
+
+diamondpickaxe

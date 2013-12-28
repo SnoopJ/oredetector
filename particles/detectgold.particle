@@ -1,9 +1,9 @@
 {
-  "kind" : "detectsilver",
+  "kind" : "detectgold",
   "definition" : {
     "type" : "text",
     "size" : 0.85,
-    "text" : "^shadow;Silver",
+    "text" : "^shadow;Gold",
     "color" : [220, 220, 220, 255],
     "light" : [0, 0, 0],
     "initialVelocity" : [0.0, -5.0],
