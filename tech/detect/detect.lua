@@ -5,7 +5,6 @@
 -- particle FX?
 --
 
-local searchpattern = {}
 --local neighbor3x3 = { {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-1} }
 -- 2-neighbors
 local neighbor3x3 = { 
@@ -22,30 +21,7 @@ local neighbor5x5 = {
     {2,0},{2,1},{2,2},{1,2},{0,2},{-1,2},{-2,2},{-2,1},{-2,0},{-2,-1},{-2,-2},{-1,-2},{0,-2},{1,-2},{2,-2},{2,-1}
  }
 
-local results = {}
-local cache = {}
-local cachettl = 30
 
-local lastScan = os.clock()
-local nextOreSound = nil
-local soundDelay = 150/1000
-local maxSoundDelay = 2
-local minScanDelay = 0.1
-local scanDelay = 0
-local flushtime = 0
-local scantime = 0
-
-local scoringPower = 0.7 
-local minScore = 3
-
-local scanning = false
-local pingTargets = { ["coal"]=true, ["dirt"]=false, ["cobblestone"]=false }
-local soundstr = "/sfx/beep.ogg"
-local farDist = 30
-local mediumDist = 15
-local flushedsomething = false
-local targets = {"coal","copperore","silverore"}
-local currenttarget = 1
 
 -- set this flag to true to test mats, not mods (debugging)
 local debugMaterial = false
@@ -63,8 +39,32 @@ function debugLog(minlevel,str,...)
 end
 
 function init()
+  data.cachettl = tech.parameter("cachettl")
+  data.scoringPower = tech.parameter("scoringPower")
+  data.minScore = tech.parameter("minScore")
+  data.soundDelay = tech.parameter("soundDelay")
+  data.maxSoundDelay = tech.parameter("maxSoundDelay")
+  data.minScanDelay = tech.parameter("minScanDelay")
+  data.farDist = tech.parameter("farDist")
+  data.nearDist = tech.parameter("nearDist") 
+  data.detectRange = tech.parameter("detectRange")
+  data.targets = {["coalore"]="coal",["copperore"]="copper",["silverore"]="silverore"}
+
+  scanDelay = 0
+  results = {}
+  cache = {}
+  searchpattern = {}
+  lastScan = os.clock()
+  nextOreSound = nil
+  flushtime = 0
+  scantime = 0
+  scanning = false
+  pingTargets = { ["coal"]=true, ["dirt"]=false, ["cobblestone"]=false }
+  soundstr = "/sfx/beep.ogg"
+  flushedsomething = false
+  currenttarget = 1 
+ 
   debugLog(1,"detect.lua:init(): Initialized detect.lua")
-  data.detectRange = 45
   generateSearchPattern()
 end
 
@@ -73,7 +73,7 @@ function scan()
     local maxscore = { {}, 0 } 
     results = {}
     scantime = os.clock()
-    flushtime = scantime + cachettl
+    flushtime = scantime + data.cachettl
     debugLog(1,"detect.lua:scan(): Running scan()...")
     -- if this ends up being future-loaded, run with coroutine.create(scan)
     if nextOreSound then return nil end
@@ -102,16 +102,21 @@ function scan()
     olddist = math.sqrt(math.pow(maxscore[1][1]-origpos[1],2)+math.pow(maxscore[1][2]-origpos[2],2))
     dist = world.magnitude(maxscore[1],origpos)
     debugLog(-1,"detect.lua:scan(): Difference in distance calcs is olddist-dist=%d",olddist-dist)
-    if dist >= farDist then
-        soundstr = "/sfx/oredetector/coal/far.wav"
-    elseif dist < farDist and dist >= mediumDist then
-        soundstr = "/sfx/oredetector/coal/medium.wav"
-    elseif dist < mediumDist then
-        soundstr = "/sfx/oredetector/coal/close.wav"
-    end 
-    nextOreSound = os.clock() + math.min(soundDelay * 1/maxscore[2],maxSoundDelay)
+    soundstr = selectSound(dist)
+    nextOreSound = os.clock() + math.min(data.soundDelay * 1/maxscore[2],data.maxSoundDelay)
     --world.spawnProjectile("oreflash2",maxscore[1],tech.parentEntityId(),{0,0},false)
     if flushedsomething then debugLog(2,"detect.lua:scan(): flushed something this scan") end
+end
+
+function selectSound(dist)
+    if dist >= data.farDist then
+        soundstr = "/sfx/oredetector/coal/far.wav"
+    elseif dist < data.farDist and dist >= data.nearDist then
+        soundstr = "/sfx/oredetector/coal/medium.wav"
+    elseif dist < data.nearDist then
+        soundstr = "/sfx/oredetector/coal/close.wav"
+    end 
+    return soundstr
 end
 
 function scoreTile(pos,target,dist)
@@ -123,8 +128,8 @@ function scoreTile(pos,target,dist)
             score=score+1 
         end
     end 
-    if score < minScore then return 0 end
-    return score/math.pow(dist+1,scoringPower)
+    if score < data.minScore then return 0 end
+    return score/math.pow(dist+1,data.scoringPower)
 end
 
 function scanRing(ring,origpos)
@@ -203,13 +208,18 @@ function input(args)
   if args.moves["special"] == 2 then
     --debugLog(1,"detect.lua:input(): Manually flushing cache")
     --cache = {}
-    debugLog(-1,"detect.lua:input(): Hand item is %s",world.entityHandItem(tech.parentEntityId(),"primary"))
+    prim = world.entityHandItem(tech.parentEntityId(),"primary")
+    alt = world.entityHandItem(tech.parentEntityId(),"alt")
+    debugLog(-1,"detect.lua:input(): Primary hand item is %s",prim)
+    debugLog(-1,"detect.lua:input(): Alt hand item is %s",alt)
+    if data.targets[prim] or data.targets[alt] then
+        debugLog(-1,"detect.lua:input(): Hand item hit in data.targets.  prim: %s  alt: %s",data.targets[prim],data.targets[alt]) 
+    end
   end
   if args.moves["special"] == 3 then
---    tech.burstParticleEmitter("detectParticles")
-    i = i + 1
+    --[[i = i + 1
     if i > 3 then i = 1 end
-    tech.burstParticleEmitter("detect"..targets[i])
+    tech.burstParticleEmitter("detect"..targets[i])]]--
     return "mousepos"
   end
   
@@ -229,7 +239,7 @@ function update(args)
   end
   
   if scanning 
-  and (os.clock()-lastScan) > (minScanDelay + scanDelay)
+  and (os.clock()-lastScan) > (data.minScanDelay + scanDelay)
   and string.find(tostring(world.entityHandItem(tech.parentEntityId(),"primary")),"pickaxe") then
     lastScan=os.clock()
     scan()

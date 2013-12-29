@@ -1,5 +1,18 @@
 {
   "script" : "detect.lua",
   "actions" : ["detect"],
-  "animator" : "detect.animation"
+  "animator" : "detect.animation",
+
+  "soundDelay" : "0.15",
+  "maxSoundDelay" : "2",
+  "minScanDelay" : 0.1,
+
+  "scoringPower" : 0.7,
+  "minScore" : 3,
+
+  "cachettl" : 30,
+
+  "detectRange" : 45,
+  "farDist" : 30,
+  "nearDist" : 15
 }

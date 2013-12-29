@@ -1,0 +1,8 @@
+{
+  "input" : [
+    { "item" : "diamondpickaxe", "count" : 1 },
+    { "item" : "coalore", "count" : 10 }
+  ],
+  "output" : { "item" : "diamondscanaxe", "count" : 1 },
+  "groups" : [ "mod" ]
+}
