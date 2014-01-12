@@ -1,0 +1,7 @@
+{
+  "input" : [
+    { "item" : "silverore", "count" : 10 }
+  ],
+  "output" : { "item" : "silversample", "count" : 1 },
+  "groups" : [ "mod" ]
+}

@@ -1,0 +1,7 @@
+{
+  "itemName" : "diamondsample",
+  "rarity" : "Common",
+  "inventoryIcon" : "diamondsample.png",
+  "description" : "A sample of diamond, used to calibrate the D-TECH.",
+  "shortdescription" : "Diamond Sample"
+}

@@ -1,0 +1,7 @@
+{
+  "itemName" : "coppersample",
+  "rarity" : "Common",
+  "inventoryIcon" : "coppersample.png",
+  "description" : "A sample of copper, used to calibrate the D-TECH.",
+  "shortdescription" : "Copper Sample"
+}

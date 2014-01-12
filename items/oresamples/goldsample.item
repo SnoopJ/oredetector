@@ -1,0 +1,7 @@
+{
+  "itemName" : "goldsample",
+  "rarity" : "Common",
+  "inventoryIcon" : "goldsample.png",
+  "description" : "A sample of gold, used to calibrate the D-TECH.",
+  "shortdescription" : "Gold Sample"
+}

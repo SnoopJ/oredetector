@@ -48,7 +48,7 @@ function init()
   data.farDist = tech.parameter("farDist")
   data.nearDist = tech.parameter("nearDist") 
   data.detectRange = tech.parameter("detectRange")
-  data.targets = {["coalore"]="coal",["copperore"]="copper",["silverore"]="silverore"}
+  data.targets = {["coalsample"]="coal",["coppersample"]="copper",["silversample"]="silverore"}
 
   scanDelay = 0
   results = {}
@@ -59,7 +59,7 @@ function init()
   flushtime = 0
   scantime = 0
   scanning = false
-  pingTargets = { ["coal"]=true, ["dirt"]=false, ["cobblestone"]=false }
+  pingTargets = { "coal" }
   soundstr = "/sfx/beep.ogg"
   flushedsomething = false
   currenttarget = 1 
@@ -162,12 +162,20 @@ function scanTile(scanpos,dist,usecache)
         if debugMaterial then res = world.material(scanpos,"foreground") or "empty" end 
 		cache[scanpos[1]][scanpos[2]] = { res, flushtime }
     end
-	if pingTargets[res] then 
+	if isTargetOre(res) then 
         if not results[scanpos[1]] then results[scanpos[1]] = {} end
         results[scanpos[1]][scanpos[2]] = res 
         debugLog(3,"detect.lua:scanTile(): Result at %s is %s",scanpos,res)
     end
 	return res
+end
+
+function isTargetOre(candidate)
+    for k,v in ipairs(pingTargets) do
+        -- two tests allows catching everything without weird item names
+        if candidate == v or (candidate .. "ore") == v then return true end
+    end
+    return false
 end
 
 function generateSearchPattern()
@@ -201,6 +209,27 @@ function createOctagon(i)
     return ret
 end
 
+function sizeOfTable(t)
+    local n = 0
+    for _,_ in pairs(t) do n = n+1 end
+    return n
+end
+
+function addTargetOre(target)
+    if not type(target) == string or isTargetOre(target) then 
+        return false 
+    end
+    debugLog(-1,"detect.lua:addTargetOre(): Starting table is %s",pingTargets)
+    if sizeOfTable(pingTargets) >= 3 then
+        debugLog(-1,"detect.lua:addTargetOre(): Removing target %s from pingTargets",pingTargets[1])
+        table.remove(pingTargets,1)
+    end
+    debugLog(-1,"detect.lua:addTargetOre(): Adding target %s to pingTargets",target)
+    table.insert(pingTargets,target)
+    debugLog(-1,"detect.lua:addTargetOre(): Ending table is %s",pingTargets)
+    return true
+end
+
 function input(args)
   if args.moves["special"] == 1 then
     return "detect"
@@ -212,8 +241,18 @@ function input(args)
     alt = world.entityHandItem(tech.parentEntityId(),"alt")
     debugLog(-1,"detect.lua:input(): Primary hand item is %s",prim)
     debugLog(-1,"detect.lua:input(): Alt hand item is %s",alt)
-    if data.targets[prim] or data.targets[alt] then
-        debugLog(-1,"detect.lua:input(): Hand item hit in data.targets.  prim: %s  alt: %s",data.targets[prim],data.targets[alt]) 
+    --if data.targets[prim] or data.targets[alt] then
+    if string.find(prim,"sample$") or string.find(alt,"sample$") then
+        debugLog(-1,"detect.lua:input(): Hand item hit in data.targets.  prim: %s  alt: %s",data.targets[prim],data.targets[alt])
+    end
+    --if data.targets[prim] then 
+    if string.find(prim,"sample$") then
+        --addTargetOre(data.targets[prim])
+        addTargetOre(string.gsub(prim,"sample$",""))
+    --elseif data.targets[alt] then 
+    elseif string.find(alt,"sample$") then
+        addTargetOre(data.targets[alt]) 
+        addTargetOre(string.gsub(alt,"sample$",""))
     end
   end
   if args.moves["special"] == 3 then
