@@ -1,7 +1,8 @@
 {
   "input" : [
+    //{ "item" : "silverore", "count" : 10 }
     { "item" : "money", "count" : 10 }
   ],
-  "output" : { "item" : "goldsample", "count" : 1 },
+  "output" : { "item" : "silversample", "count" : 1 },
   "groups" : [ "mod", "oredetector" ]
 }

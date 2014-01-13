@@ -49,7 +49,8 @@ function init()
   data.nearDist = tech.parameter("nearDist") 
   data.detectRange = tech.parameter("detectRange")
   data.targets = {["coalsample"]="coal",["coppersample"]="copper",["silversample"]="silverore"}
-
+  data.pingTargets = { }
+  
   scanDelay = 0
   results = {}
   cache = {}
@@ -59,7 +60,7 @@ function init()
   flushtime = 0
   scantime = 0
   scanning = false
-  pingTargets = { "coal" }
+  
   soundstr = "/sfx/beep.ogg"
   flushedsomething = false
   currenttarget = 1 
@@ -104,7 +105,6 @@ function scan()
     debugLog(-1,"detect.lua:scan(): Difference in distance calcs is olddist-dist=%d",olddist-dist)
     soundstr = selectSound(dist)
     nextOreSound = os.clock() + math.min(data.soundDelay * 1/maxscore[2],data.maxSoundDelay)
-    --world.spawnProjectile("oreflash2",maxscore[1],tech.parentEntityId(),{0,0},false)
     if flushedsomething then debugLog(2,"detect.lua:scan(): flushed something this scan") end
 end
 
@@ -171,9 +171,9 @@ function scanTile(scanpos,dist,usecache)
 end
 
 function isTargetOre(candidate)
-    for k,v in ipairs(pingTargets) do
+    for i,v in ipairs(data.pingTargets) do
         -- two tests allows catching everything without weird item names
-        if candidate == v or (candidate .. "ore") == v then return true end
+        if candidate == v or (candidate .. "ore") == v then return i end
     end
     return false
 end
@@ -189,15 +189,12 @@ function generateSearchPattern()
 end
 
 function round(num)
--- to nearest integer
     return math.floor(num + 0.5)
 end
 
 function createOctagon(i)
--- do stuff.  see the xcf file
     local perimeter = 4*math.ceil(i/2) + (3-i%2)*4*math.floor(i/2)
     local ret = {}
-    --debugLog(3,"'Perimeter' of octagon %d is %d",i,perimeter)  
     
     for j=0,perimeter-1 do
     table.insert(ret,
@@ -219,14 +216,25 @@ function addTargetOre(target)
     if not type(target) == string or isTargetOre(target) then 
         return false 
     end
-    debugLog(-1,"detect.lua:addTargetOre(): Starting table is %s",pingTargets)
-    if sizeOfTable(pingTargets) >= 3 then
-        debugLog(-1,"detect.lua:addTargetOre(): Removing target %s from pingTargets",pingTargets[1])
-        table.remove(pingTargets,1)
+    debugLog(-1,"detect.lua:addTargetOre(): Starting table is %s",data.pingTargets)
+    if sizeOfTable(data.pingTargets) >= 3 then
+        debugLog(-1,"detect.lua:addTargetOre(): Removing target %s from data.pingTargets",data.pingTargets[1])
+        table.remove(data.pingTargets,1)
     end
-    debugLog(-1,"detect.lua:addTargetOre(): Adding target %s to pingTargets",target)
-    table.insert(pingTargets,target)
-    debugLog(-1,"detect.lua:addTargetOre(): Ending table is %s",pingTargets)
+    debugLog(-1,"detect.lua:addTargetOre(): Adding target %s to data.pingTargets",target)
+    table.insert(data.pingTargets,target)
+    debugLog(-1,"detect.lua:addTargetOre(): Ending table is %s",data.pingTargets)
+    return true
+end
+
+function removeTargetOre(target)
+    tablepos = isTargetOre(target)
+    if not type(target) == string or not tablepos then
+        return false
+    end
+    debugLog(-1,"detect.lua:removeTargetOre(): Starting table is %s",data.pingTargets)
+    table.remove(data.pingTargets,tablepos)
+    debugLog(-1,"detect.lua:removeTargetOre(): Ending table is %s",data.pingTargets)
     return true
 end
 
@@ -234,43 +242,38 @@ function input(args)
   if args.moves["special"] == 1 then
     return "detect"
   end
+  
   if args.moves["special"] == 2 then
-    --debugLog(1,"detect.lua:input(): Manually flushing cache")
-    --cache = {}
-    prim = world.entityHandItem(tech.parentEntityId(),"primary")
-    alt = world.entityHandItem(tech.parentEntityId(),"alt")
-    debugLog(-1,"detect.lua:input(): Primary hand item is %s",prim)
-    debugLog(-1,"detect.lua:input(): Alt hand item is %s",alt)
-    --if data.targets[prim] or data.targets[alt] then
-    if string.find(prim,"sample$") or string.find(alt,"sample$") then
-        debugLog(-1,"detect.lua:input(): Hand item hit in data.targets.  prim: %s  alt: %s",data.targets[prim],data.targets[alt])
-    end
-    --if data.targets[prim] then 
-    if string.find(prim,"sample$") then
-        --addTargetOre(data.targets[prim])
-        addTargetOre(string.gsub(prim,"sample$",""))
-    --elseif data.targets[alt] then 
-    elseif string.find(alt,"sample$") then
-        addTargetOre(data.targets[alt]) 
-        addTargetOre(string.gsub(alt,"sample$",""))
+    local item = checkHandSample()
+    if item then
+        addTargetOre(string.gsub(item,"sample$",""))
     end
   end
+  
   if args.moves["special"] == 3 then
-    --[[i = i + 1
-    if i > 3 then i = 1 end
-    tech.burstParticleEmitter("detect"..targets[i])]]--
-    return "mousepos"
+    local item = checkHandSample()
+    if item then
+        removeTargetOre(string.gsub(item,"sample$",""))
+    end
   end
   
   return nil
 end
 
+function checkHandSample()
+    primitem = world.entityHandItem(tech.parentEntityId(),"primary")
+    altitem = world.entityHandItem(tech.parentEntityId(),"alt")
+    debugLog(2,"detect.lua:checkHandSample(): Primary hand item is %s",primitem)
+    debugLog(2,"detect.lua:checkHandSample(): Alt hand item is %s",altitem)
+    if string.find(primitem,"sample$") then
+        return primitem
+    elseif string.find(altitem,"sample$") then
+        return altitem
+    end
+    return nil
+end
+
 function update(args)
-  if args.actions["mousepos"] then
-    local mpos = args.aimPosition 
-    world.logInfo("Mouse position is (%d,%d)",mpos[1],mpos[2])
-  end
-  
   if nextOreSound 
   and os.clock() > nextOreSound then
     nextOreSound = nil

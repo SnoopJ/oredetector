@@ -3,5 +3,5 @@
     { "item" : "money", "count" : 10 }
   ],
   "output" : { "item" : "diamondsample", "count" : 1 },
-  "groups" : [ "mod" ]
+  "groups" : [ "mod", "oredetector" ]
 }

@@ -3,5 +3,5 @@
     { "item" : "copperore", "count" : 10 }
   ],
   "output" : { "item" : "coppersample", "count" : 1 },
-  "groups" : [ "mod" ]
+  "groups" : [ "mod", "oredetector" ]
 }

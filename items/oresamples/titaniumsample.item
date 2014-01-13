@@ -1,0 +1,7 @@
+{
+  "itemName" : "titaniumsample",
+  "rarity" : "Common",
+  "inventoryIcon" : "titaniumsample.png",
+  "description" : "A sample of titanium, used to calibrate the D-TECH.",
+  "shortdescription" : "Titanium Sample"
+}
