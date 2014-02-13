@@ -49,7 +49,10 @@ function init()
   data.nearDist = tech.parameter("nearDist") 
   data.detectRange = tech.parameter("detectRange")
   data.targets = {["coalsample"]="coal",["coppersample"]="copper",["silversample"]="silverore"}
-  data.pingTargets = { }
+  if not data.pingTargets then
+    data.pingTargets = { }
+  end
+  world.logInfo("pingtargets is %s",data.pingTargets)
   
   scanDelay = 0
   results = {}
@@ -61,17 +64,21 @@ function init()
   scantime = 0
   scanning = false
   
+  startupsnd = "/sfx/oredetector/startupbeep.wav"
+  shutdownsnd = "/sfx/oredetector/shutdownbeep.wav"
   soundstr = "/sfx/beep.ogg"
   flushedsomething = false
   currenttarget = 1 
  
   debugLog(1,"detect.lua:init(): Initialized detect.lua")
   generateSearchPattern()
+  --tech.setAnimationState("indicate","indicate")
 end
 
 function scan()
     local origpos = tech.position()
     local maxscore = { {}, 0 } 
+    local dist = -1
     results = {}
     scantime = os.clock()
     flushtime = scantime + data.cachettl
@@ -87,11 +94,16 @@ function scan()
     for px,t in pairs(results) do
         for py,mod in pairs (t) do 
             if not scoring[px] then scoring[px]={} end
+            -- TODO: uh I don't remember what I was doing here but this looks world-wrap unsafe
             dist = math.sqrt(math.pow(px-origpos[1],2)+math.pow(py-origpos[2],2))
-            if dist < 1 then dist = 1 end
+            --dist = world.magnitude({px,py},origpos)
+            --if dist < 1 then dist = 1 end
             scoring[px][py] = scoreTile({px,py},mod,dist)
             debugLog(2,"detect.lua:scan(): Now scoring %s, dist is %d, score is %d",{px,py},dist,scoring[px][py])
-            if scoring[px][py] > maxscore[2] then maxscore = { {px,py}, scoring[px][py] } end
+            if scoring[px][py] > maxscore[2] then 
+                debugLog(2,"detect.lua:scan(): New max score!  Old was %s, new is %s",maxscore,{ {px,py}, scoring[px][py] })
+                maxscore = { {px,py}, scoring[px][py] } 
+            end
         end
     end
     debugLog(2,"detect.lua:scan(): Max score is %s",maxscore)
@@ -100,36 +112,39 @@ function scan()
         return nil 
     end
     scanDelay = 0.0 -- switch to 'active' scan
-    olddist = math.sqrt(math.pow(maxscore[1][1]-origpos[1],2)+math.pow(maxscore[1][2]-origpos[2],2))
-    dist = world.magnitude(maxscore[1],origpos)
-    debugLog(-1,"detect.lua:scan(): Difference in distance calcs is olddist-dist=%d",olddist-dist)
-    soundstr = selectSound(dist)
+    
+    soundstr = distanceParameters({maxscore[1][1]-origpos[1],maxscore[1][2]-origpos[2]})
     nextOreSound = os.clock() + math.min(data.soundDelay * 1/maxscore[2],data.maxSoundDelay)
     if flushedsomething then debugLog(2,"detect.lua:scan(): flushed something this scan") end
 end
 
-function selectSound(dist)
+function distanceParameters(pos)
+    local dist = world.magnitude(pos)
     if dist >= data.farDist then
         soundstr = "/sfx/oredetector/coal/far.wav"
+        tech.setAnimationState("indicate","off")
     elseif dist < data.farDist and dist >= data.nearDist then
         soundstr = "/sfx/oredetector/coal/medium.wav"
+        tech.setAnimationState("indicate","off")
     elseif dist < data.nearDist then
         soundstr = "/sfx/oredetector/coal/close.wav"
+        tech.setAnimationState("indicate","indicate")
+        tech.rotateGroup("indicator",math.atan2(pos[2],pos[1]))
     end 
     return soundstr
 end
 
 function scoreTile(pos,target,dist)
-    local score = 1
+    local numore = 1
     for i=1,8 do
         local neighbor = {round(pos[1]+neighbor3x3[i][1]),round(pos[2]+neighbor3x3[i][2])}
         if results[neighbor[1]] and results[neighbor[1]][neighbor[2]] then 
             debugLog(2,"detect.lua:scoreTile() Incrementing score at %s...",neighbor)
-            score=score+1 
+            numore=numore+1 
         end
     end 
-    if score < data.minScore then return 0 end
-    return score/math.pow(dist+1,data.scoringPower)
+    if numore < data.minScore then return 0 end
+    return numore/math.pow(dist+1,data.scoringPower)
 end
 
 function scanRing(ring,origpos)
@@ -251,6 +266,8 @@ function input(args)
   end
   
   if args.moves["special"] == 3 then
+    
+    tech.setParentAppearance("normal")
     local item = checkHandSample()
     if item then
         removeTargetOre(string.gsub(item,"sample$",""))
@@ -265,15 +282,19 @@ function checkHandSample()
     altitem = world.entityHandItem(tech.parentEntityId(),"alt")
     debugLog(2,"detect.lua:checkHandSample(): Primary hand item is %s",primitem)
     debugLog(2,"detect.lua:checkHandSample(): Alt hand item is %s",altitem)
-    if string.find(primitem,"sample$") then
+    if primitem and string.find(primitem,"sample$") then
         return primitem
-    elseif string.find(altitem,"sample$") then
+    elseif altitem and string.find(altitem,"sample$") then
         return altitem
     end
     return nil
 end
 
 function update(args)
+  --tech.setAnimationState("indicate","indicate")
+  --tech.rotateGroup("indicator",(os.clock()%60)*2*math.pi/1.5)
+  
+  
   if nextOreSound 
   and os.clock() > nextOreSound then
     nextOreSound = nil
@@ -286,9 +307,18 @@ function update(args)
     lastScan=os.clock()
     scan()
   end
+    
+  if not (scanning and string.find(tostring(world.entityHandItem(tech.parentEntityId(),"primary")),"pickaxe")) then 
+    tech.setAnimationState("indicate","off")
+  end
   
   if args.actions["detect"] then
     scanning = not scanning
+    if scanning then 
+      tech.playImmediateSound(startupsnd)
+    else
+      tech.playImmediateSound(shutdownsnd)
+    end
     nextOreSound = nil
     debugLog(1,"detect passed as an arg in detect.lua:update(), setting scanning to %s",scanning)
     return nil

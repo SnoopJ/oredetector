@@ -1,26 +1,51 @@
 {
-  "particleEmitters" : {
-    "detectcoal" : {
-        "emissionRate" : 1.0, 
-        "particles" : [ { 
-            "particle" : "detectcoal", 
-            "flip" : true } ] 
+  "animatedParts" : {
+    "stateTypes" : {
+      "indicate" : {
+        "default" : "off",
+        "states" : {
+          "off" : { },
+
+          "indicate" : {
+            "frames" : 6,
+            "cycle" : 0.5,
+            "mode" : "loop"
+          }
+        }
+      }
     },
-    "detectcopperore" : {
-        "emissionRate" : 1.0, 
-        "particles" : [ { 
-            "particle" : "detectcopper", 
-            "flip" : true } ] 
-    },
-//    "detectiron" : { "emissionRate" : 1.0, "particles" : [ { "particle" : "detectiron", "flip" : true } ] },
-    "detectsilverore" : {
-        "emissionRate" : 1.0, 
-        "particles" : [ { 
-            "particle" : "detectsilver", 
-            "flip" : true } ] 
+
+    "parts" : {
+      "indicator" : {
+        "properties" : {
+          "centered" : true,
+          "zLevel" : 0,
+          "offset" : [2.25,0],
+          "rotationGroup" : "indicator",
+          "rotationCenter" : [0,0]
+        },
+
+        "partStates" : {
+          "indicate" : {
+            "off" : {
+              "properties" : {
+                "image" : "indicator.png:off"
+              }
+            },
+            "indicate" : {
+              "properties" : {
+                "image" : "indicator.png:indicate.<frame>"
+              }
+            }
+          }
+        }
+      }
     }
-//    "detectgold" : { "emissionRate" : 1.0, "particles" : [ { "particle" : "detectgold", "flip" : true } ] },
-//    "detectplatinum" : { "emissionRate" : 1.0, "particles" : [ { "particle" : "detectplatinum", "flip" : true } ] },
-//    "detectdiamond" : { "emissionRate" : 1.0, "particles" : [ { "particle" : "detectdiamond", "flip" : true } ] }
+  },
+
+  "rotationGroups" : {
+    "indicator" : {
+      "angularVelocity" : 10.0
+    }
   }
 }

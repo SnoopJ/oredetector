@@ -1,0 +1,11 @@
+{
+  "__merge" : [],
+  
+  "filterButtons" : [
+    {
+      "baseImage" : "/interface/mysillymod.png",
+      "baseImageChecked" : "/interface/mysillymodpressed.png",
+      "filter" : "oredetector"
+    }
+  ]
+}

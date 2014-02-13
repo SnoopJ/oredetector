@@ -1,0 +1,10 @@
+{
+  "frameGrid" : {
+    "size" : [8, 9],
+    "dimensions" : [7, 1],
+
+    "names" : [
+      [ "off", "indicate.1", "indicate.2", "indicate.3", "indicate.4", "indicate.5", "indicate.6" ]
+    ]
+  }
+}
