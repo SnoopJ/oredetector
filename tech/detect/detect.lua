@@ -66,6 +66,8 @@ function init()
   
   startupsnd = "/sfx/oredetector/startupbeep.wav"
   shutdownsnd = "/sfx/oredetector/shutdownbeep.wav"
+  addsnd = "/sfx/oredetector/87033__runnerpack__menuinc.wav"
+  removesnd = "/sfx/oredetector/87032__runnerpack__menudec.wav"
   soundstr = "/sfx/beep.ogg"
   flushedsomething = false
   currenttarget = 1 
@@ -239,6 +241,7 @@ function addTargetOre(target)
     debugLog(-1,"detect.lua:addTargetOre(): Adding target %s to data.pingTargets",target)
     table.insert(data.pingTargets,target)
     debugLog(-1,"detect.lua:addTargetOre(): Ending table is %s",data.pingTargets)
+    tech.playImmediateSound(addsnd)
     return true
 end
 
@@ -250,6 +253,7 @@ function removeTargetOre(target)
     debugLog(-1,"detect.lua:removeTargetOre(): Starting table is %s",data.pingTargets)
     table.remove(data.pingTargets,tablepos)
     debugLog(-1,"detect.lua:removeTargetOre(): Ending table is %s",data.pingTargets)
+    tech.playImmediateSound(removesnd)
     return true
 end
 
