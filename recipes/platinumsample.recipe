@@ -1,0 +1,7 @@
+{
+  "input" : [
+    { "item" : "platinumore", "count" : 10 }
+  ],
+  "output" : { "item" : "platinumsample", "count" : 1 },
+  "groups" : [ "mod", "oredetector" ]
+}

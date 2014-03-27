@@ -1,0 +1,7 @@
+{
+  "input" : [
+    { "item" : "solariumore", "count" : 10 }
+  ],
+  "output" : { "item" : "solariumsample", "count" : 1 },
+  "groups" : [ "mod", "oredetector" ]
+}

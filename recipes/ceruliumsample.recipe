@@ -1,0 +1,7 @@
+{
+  "input" : [
+    { "item" : "ceruliumore", "count" : 10 }
+  ],
+  "output" : { "item" : "ceruliumsample", "count" : 1 },
+  "groups" : [ "mod", "oredetector" ]
+}

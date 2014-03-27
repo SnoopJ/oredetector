@@ -1,0 +1,7 @@
+{
+  "input" : [
+    { "item" : "ironore", "count" : 10 }
+  ],
+  "output" : { "item" : "ironsample", "count" : 1 },
+  "groups" : [ "mod", "oredetector" ]
+}
