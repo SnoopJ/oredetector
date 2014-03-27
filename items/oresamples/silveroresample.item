@@ -1,7 +1,7 @@
 {
-  "itemName" : "silversample",
+  "itemName" : "silveroresample",
   "rarity" : "Common",
-  "inventoryIcon" : "silversample.png",
+  "inventoryIcon" : "silveroresample.png",
   "description" : "A sample of silver, used to calibrate the D-TECH.",
   "shortdescription" : "Silver Sample"
 }

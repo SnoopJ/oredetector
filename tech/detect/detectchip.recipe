@@ -4,5 +4,5 @@
     "item" : "detectTech-chip",
     "count" : 1
   },
-  "groups" : [ "mod", "tech" ]
+  "groups" : [ "mod", "tech", "oredetector" ]
 }

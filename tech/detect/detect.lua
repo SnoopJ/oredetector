@@ -1,11 +1,5 @@
--- TODO
--- future-loading? (use coroutine.yield() and coroutine.resume())
----- hints_ suggested doing a full scan, splining over the results, and finding maxima (analytical?!)
--- sparse scanning (interlace + use collision data)
--- particle FX?
---
+--Mom, don't look.  It's bad code.
 
---local neighbor3x3 = { {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}, {0,-1}, {1,-1} }
 -- 2-neighbors
 local neighbor3x3 = { 
     [4]={-1,1},  [3]={0,1},  [2]={1,1},
@@ -62,9 +56,9 @@ function init()
     ["rubiumsample"]="Rubium",
     ["solariumsample"]="solarium",
     ["uraniumsample"]="uranium",
+    ["ironsample"]="iron",
     
-    ["silversample"]="silverore",
-    
+    ["silversample"]="silverore"    
   }
   if not data.pingTargets then
     data.pingTargets = { }
@@ -206,8 +200,10 @@ end
 
 function isTargetOre(candidate)
     for i,v in ipairs(data.pingTargets) do
-        -- two tests allows catching everything without weird item names
-        if candidate == v or (candidate .. "ore") == v then return i end
+        -- case sensitivity is stupid
+        if string.lower(candidate) == string.lower(v) then 
+            return i 
+        end
     end
     return false
 end
@@ -247,11 +243,11 @@ function sizeOfTable(t)
 end
 
 function addTargetOre(target)
-    if not type(target) == string or isTargetOre(target) then 
+    if (not type(target) == string) or (isTargetOre(data.targets[target])) then 
         return false 
     end
     debugLog(-1,"detect.lua:addTargetOre(): Starting table is %s",data.pingTargets)
-    if sizeOfTable(data.pingTargets) >= 3 then
+    if #data.pingTargets >= 3 then
         debugLog(-1,"detect.lua:addTargetOre(): Removing target %s from data.pingTargets",data.pingTargets[1])
         table.remove(data.pingTargets,1)
     end
@@ -281,8 +277,9 @@ function input(args)
   
   if args.moves["special"] == 2 then
     local item = checkHandSample()
-    if item then
+    if item and data.targets[item] then
         addTargetOre(string.gsub(item,"sample$",""))
+        --addTargetOre(data.targets[item])
     end
   end
   
@@ -290,8 +287,9 @@ function input(args)
     
     tech.setParentAppearance("normal")
     local item = checkHandSample()
-    if item then
+    if item and data.targets[item] then
         removeTargetOre(string.gsub(item,"sample$",""))
+        --removeTargetOre(data.targets[item])
     end
   end
   
