@@ -1,6 +1,6 @@
 {
   "input" : [
-    { "item" : "rubiumore", "count" : 10 }
+    { "item" : "Rubiumore", "count" : 10 }
   ],
   "output" : { "item" : "rubiumsample", "count" : 1 },
   "groups" : [ "mod", "oredetector" ]

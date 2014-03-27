@@ -1,6 +1,6 @@
 {
   "input" : [
-    { "item" : "crystalore", "count" : 10 }
+    { "item" : "crystal", "count" : 10 }
   ],
   "output" : { "item" : "crystalsample", "count" : 1 },
   "groups" : [ "mod", "oredetector" ]

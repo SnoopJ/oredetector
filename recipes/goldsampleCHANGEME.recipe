@@ -1,7 +1,0 @@
-{
-  "input" : [
-    { "item" : "money", "count" : 10 }
-  ],
-  "output" : { "item" : "goldsample", "count" : 1 },
-  "groups" : [ "mod", "oredetector" ]
-}
