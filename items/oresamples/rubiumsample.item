@@ -1,0 +1,7 @@
+{
+  "itemName" : "rubiumsample",
+  "rarity" : "Common",
+  "inventoryIcon" : "rubiumsample.png",
+  "description" : "A sample of rubium, used to calibrate the D-TECH.",
+  "shortdescription" : "Rubium Sample"
+}

@@ -1,0 +1,7 @@
+{
+  "itemName" : "aegisaltsample",
+  "rarity" : "Common",
+  "inventoryIcon" : "aegisaltsample.png",
+  "description" : "A sample of aegisalt, used to calibrate the D-TECH.",
+  "shortdescription" : "Aegisalt Sample"
+}

@@ -1,0 +1,7 @@
+{
+  "input" : [
+    { "item" : "aegisaltore", "count" : 10 }
+  ],
+  "output" : { "item" : "aegisaltsample", "count" : 1 },
+  "groups" : [ "mod", "oredetector" ]
+}

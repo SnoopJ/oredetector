@@ -48,7 +48,24 @@ function init()
   data.farDist = tech.parameter("farDist")
   data.nearDist = tech.parameter("nearDist") 
   data.detectRange = tech.parameter("detectRange")
-  data.targets = {["coalsample"]="coal",["coppersample"]="copper",["silversample"]="silverore"}
+  data.targets = {
+    ["coalsample"]="coal",
+    ["coppersample"]="copper",
+    ["aegisaltsample"]="aegisalt",
+    ["goldsample"]="gold",
+    ["diamondsample"]="diamond",
+    ["crystalsample"]="crystal",
+    ["titaniumsample"]="titanium",
+    ["ceruliumsample"]="Cerulium",
+    ["platinumsample"]="platinum",
+    ["plutoniumsample"]="plutonium",
+    ["rubiumsample"]="Rubium",
+    ["solariumsample"]="solarium",
+    ["uraniumsample"]="uranium",
+    
+    ["silversample"]="silverore",
+    
+  }
   if not data.pingTargets then
     data.pingTargets = { }
   end

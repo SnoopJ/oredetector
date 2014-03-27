@@ -1,0 +1,7 @@
+{
+  "itemName" : "solariumsample",
+  "rarity" : "Common",
+  "inventoryIcon" : "solariumsample.png",
+  "description" : "A sample of solarium, used to calibrate the D-TECH.",
+  "shortdescription" : "Solarium Sample"
+}

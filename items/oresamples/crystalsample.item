@@ -1,0 +1,7 @@
+{
+  "itemName" : "crystalsample",
+  "rarity" : "Common",
+  "inventoryIcon" : "crystalsample.png",
+  "description" : "A sample of crystal, used to calibrate the D-TECH.",
+  "shortdescription" : "Crystal Sample"
+}
