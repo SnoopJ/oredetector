@@ -3,8 +3,8 @@
   
   "filterButtons" : [
     {
-      "baseImage" : "/interface/mysillymod.png",
-      "baseImageChecked" : "/interface/mysillymodpressed.png",
+      "baseImage" : "/interface/oredetector.png",
+      "baseImageChecked" : "/interface/oredetectorpressed.png",
       "filter" : "oredetector"
     }
   ]
